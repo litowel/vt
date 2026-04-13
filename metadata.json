@@ -1,0 +1,6 @@
+{
+  "name": "Vitala AI",
+  "description": "A medical AI assistant powered by Upfrica.africa featuring symptom checking, image-based diagnosis, and offline history.",
+  "requestFramePermissions": [],
+  "majorCapabilities": []
+}
