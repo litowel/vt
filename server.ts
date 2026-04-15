@@ -174,18 +174,9 @@ if (!process.env.VERCEL) {
   
   const startLocalServer = async () => {
     if (process.env.NODE_ENV !== "production") {
-      try {
-        // Use a dynamic string to prevent Vercel's static analyzer from crashing the build
-        const vitePkg = "vite";
-        const { createServer: createViteServer } = await import(vitePkg);
-        const vite = await createViteServer({
-          server: { middlewareMode: true },
-          appType: "spa",
-        });
-        app.use(vite.middlewares);
-      } catch (e) {
-        console.error("Failed to load vite", e);
-      }
+      // In local development, we run Vite separately or use a different script.
+      // We do not import Vite here to prevent Vercel build crashes related to Rollup.
+      console.log("Running in development mode. Ensure Vite is running.");
     } else {
       const distPath = path.join(process.cwd(), 'dist');
       app.use(express.static(distPath));
