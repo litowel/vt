@@ -1,5 +1,6 @@
 import express from "express";
 import path from "path";
+import { GoogleGenAI } from "@google/genai";
 
 // Helper function to get live USD to GHS exchange rate
 async function getUsdToGhsRate() {
@@ -14,15 +15,99 @@ async function getUsdToGhsRate() {
 }
 
 const app = express();
-app.use(express.json());
+// Increase payload limit for image uploads
+app.use(express.json({ limit: '50mb' }));
+
+// --- AI Routes (Proxy to Gemini to protect API Key) ---
+app.post("/api/ai/symptoms", async (req, res) => {
+  try {
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) throw new Error("GEMINI_API_KEY is missing on the server. Please add it to Vercel Environment Variables.");
+    const ai = new GoogleGenAI({ apiKey });
+    const { symptoms } = req.body;
+    
+    const prompt = `You are Vitala AI, a helpful medical AI assistant powered by Upfrica.africa. 
+A user has provided the following symptoms: "${symptoms}".
+Please provide a preliminary analysis, possible causes, and recommendations.
+IMPORTANT DISCLAIMER: Always start your response by stating that you are an AI, not a doctor, and this is not medical advice. Advise the user to consult a healthcare professional for a proper diagnosis.`;
+
+    const response = await ai.models.generateContent({
+      model: "gemini-3-flash-preview",
+      contents: prompt,
+    });
+    res.json({ text: response.text });
+  } catch (e: any) {
+    console.error("AI Symptoms Error:", e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.post("/api/ai/image", async (req, res) => {
+  try {
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) throw new Error("GEMINI_API_KEY is missing on the server. Please add it to Vercel Environment Variables.");
+    const ai = new GoogleGenAI({ apiKey });
+    const { base64Image, mimeType, additionalInfo } = req.body;
+    
+    const prompt = `You are Vitala AI, a helpful medical AI assistant powered by Upfrica.africa.
+Please analyze this image. ${additionalInfo ? `The user also provided this context: "${additionalInfo}".` : ""}
+Provide a preliminary analysis of what you see, possible conditions, and recommendations.
+IMPORTANT DISCLAIMER: Always start your response by stating that you are an AI, not a doctor, and this is not medical advice. Advise the user to consult a healthcare professional for a proper diagnosis.`;
+
+    const imagePart = {
+      inlineData: {
+        mimeType,
+        data: base64Image.split(',')[1],
+      },
+    };
+
+    const response = await ai.models.generateContent({
+      model: "gemini-3-flash-preview",
+      contents: { parts: [imagePart, { text: prompt }] },
+    });
+    res.json({ text: response.text });
+  } catch (e: any) {
+    console.error("AI Image Error:", e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.post("/api/ai/audio", async (req, res) => {
+  try {
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) throw new Error("GEMINI_API_KEY is missing on the server. Please add it to Vercel Environment Variables.");
+    const ai = new GoogleGenAI({ apiKey });
+    const { text } = req.body;
+    
+    const cleanText = text.replace(/[*#_]/g, '').slice(0, 2000); 
+    const response = await ai.models.generateContent({
+      model: "gemini-2.5-flash-preview-tts",
+      contents: [{ parts: [{ text: cleanText }] }],
+      config: {
+        responseModalities: ["AUDIO"],
+        speechConfig: {
+          voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Kore' } },
+        },
+      },
+    });
+    res.json({ audioData: response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data });
+  } catch (e: any) {
+    console.error("AI Audio Error:", e);
+    res.status(500).json({ error: e.message });
+  }
+});
 
 // Expose Paystack Public Key securely to the frontend
 app.get("/api/payment/public-key", (req, res) => {
-  const publicKey = process.env.PAYSTACK_PUBLIC_KEY || process.env.VITE_PAYSTACK_PUBLIC_KEY;
-  if (!publicKey) {
-    return res.status(500).json({ error: "PAYSTACK_PUBLIC_KEY is not configured in the environment." });
+  try {
+    const publicKey = process.env.PAYSTACK_PUBLIC_KEY || process.env.VITE_PAYSTACK_PUBLIC_KEY;
+    if (!publicKey) {
+      return res.status(400).json({ error: "PAYSTACK_PUBLIC_KEY is not configured in the environment." });
+    }
+    res.json({ publicKey });
+  } catch (e: any) {
+    res.status(400).json({ error: e.message });
   }
-  res.json({ publicKey });
 });
 
 // Affiliate Routes
@@ -44,7 +129,7 @@ app.post("/api/affiliate/withdraw", async (req, res) => {
   try {
     const secretKey = process.env.PAYSTACK_SECRET_KEY;
     if (!secretKey) {
-      return res.status(500).json({ error: "PAYSTACK_SECRET_KEY is not configured. Please add it to the Secrets panel." });
+      return res.status(400).json({ error: "PAYSTACK_SECRET_KEY is not configured. Please add it to the Secrets panel." });
     }
 
     if (affiliateStats.balance < 50) {
@@ -90,7 +175,9 @@ if (!process.env.VERCEL) {
   const startLocalServer = async () => {
     if (process.env.NODE_ENV !== "production") {
       try {
-        const { createServer: createViteServer } = await import("vite");
+        // Use a dynamic string to prevent Vercel's static analyzer from crashing the build
+        const vitePkg = "vite";
+        const { createServer: createViteServer } = await import(vitePkg);
         const vite = await createViteServer({
           server: { middlewareMode: true },
           appType: "spa",

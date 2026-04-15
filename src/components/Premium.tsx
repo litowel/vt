@@ -40,7 +40,15 @@ export default function Premium() {
     try {
       // Fetch the public key from our backend to avoid Vite env injection issues
       const keyResponse = await fetch('/api/payment/public-key');
-      const keyData = await keyResponse.json();
+      
+      let keyData;
+      const responseText = await keyResponse.text();
+      try {
+        keyData = JSON.parse(responseText);
+      } catch (parseError) {
+        console.error("Server returned non-JSON response:", responseText);
+        throw new Error("Server configuration error. Please ensure PAYSTACK_PUBLIC_KEY is set in Vercel.");
+      }
       
       if (!keyResponse.ok) {
         throw new Error(keyData.error || "Failed to fetch Paystack configuration.");
