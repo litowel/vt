@@ -5,7 +5,7 @@ export default function Premium() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const handlePayazaCheckout = async () => {
+  const handlePaystackCheckout = async () => {
     setLoading(true);
     setError('');
     try {
@@ -23,7 +23,7 @@ export default function Premium() {
       if (data.checkoutUrl) {
         window.location.href = data.checkoutUrl;
       } else {
-        throw new Error('No checkout URL returned from Payaza');
+        throw new Error('No checkout URL returned from Paystack');
       }
     } catch (err: any) {
       setError(err.message);
@@ -103,7 +103,7 @@ export default function Premium() {
             </li>
           </ul>
           <button 
-            onClick={handlePayazaCheckout}
+            onClick={handlePaystackCheckout}
             disabled={loading}
             className="w-full py-3 px-4 bg-teal-500 text-white rounded-xl font-medium hover:bg-teal-400 transition-colors flex items-center justify-center gap-2"
           >
@@ -112,7 +112,7 @@ export default function Premium() {
             ) : (
               <>
                 <CreditCard className="w-5 h-5" />
-                Upgrade with Payaza
+                Upgrade with Paystack
               </>
             )}
           </button>

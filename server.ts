@@ -2,47 +2,59 @@ import express from "express";
 import { createServer as createViteServer } from "vite";
 import path from "path";
 
+// Helper function to get live USD to GHS exchange rate
+async function getUsdToGhsRate() {
+  try {
+    const res = await fetch("https://open.er-api.com/v6/latest/USD");
+    const data = await res.json();
+    return data.rates.GHS || 15.0; // Fallback to 15.0 if GHS is missing
+  } catch (e) {
+    console.error("FX fetch failed, using fallback rate", e);
+    return 15.0; // Fallback rate in case the API is down
+  }
+}
+
 async function startServer() {
   const app = express();
   const PORT = 3000;
 
   app.use(express.json());
 
-  // Real Payaza Checkout Integration
+  // Real Paystack Checkout Integration
   app.post("/api/payment/checkout", async (req, res) => {
     try {
-      const apiKey = process.env.PAYAZA_API_KEY;
-      if (!apiKey) {
-        return res.status(500).json({ error: "PAYAZA_API_KEY is not configured in the environment." });
+      const secretKey = process.env.PAYSTACK_SECRET_KEY;
+      if (!secretKey) {
+        return res.status(500).json({ error: "PAYSTACK_SECRET_KEY is not configured in the environment." });
       }
 
-      // Actual call to Payaza API (Replace with exact Payaza endpoint if different)
-      const response = await fetch("https://api.payaza.africa/live/merchant/api/v1/payment/checkout", {
+      const usdAmount = 4.99;
+      const rate = await getUsdToGhsRate();
+      const ghsAmount = usdAmount * rate;
+      const amountInPesewas = Math.round(ghsAmount * 100); // Paystack expects amounts in the lowest currency unit (pesewas)
+
+      // Actual call to Paystack API to initialize transaction
+      const response = await fetch("https://api.paystack.co/transaction/initialize", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Payaza ${apiKey}`
+          "Authorization": `Bearer ${secretKey}`
         },
         body: JSON.stringify({
-          transaction_type: "charge",
-          service_payload: {
-            first_name: "Vitala",
-            last_name: "User",
-            email_address: "user@example.com",
-            phone_number: "1234567890",
-            amount: 4.99,
-            currency: "USD"
-          }
+          email: "user@example.com", // In production, get this from the authenticated user
+          amount: amountInPesewas,
+          currency: "GHS",
+          callback_url: process.env.APP_URL || "http://localhost:3000"
         })
       });
 
       const data = await response.json();
-      if (!response.ok) {
-        throw new Error(data.message || "Payaza checkout failed");
+      if (!data.status) {
+        throw new Error(data.message || "Paystack checkout failed");
       }
 
-      // Redirect to the checkout URL provided by Payaza
-      res.json({ checkoutUrl: data.checkout_url || data.data?.checkout_url });
+      // Redirect to the checkout URL provided by Paystack
+      res.json({ checkoutUrl: data.data.authorization_url });
     } catch (error: any) {
       console.error("Payment error:", error);
       res.status(500).json({ error: error.message });
@@ -63,35 +75,44 @@ async function startServer() {
 
   app.post("/api/affiliate/withdraw", async (req, res) => {
     try {
-      const apiKey = process.env.PAYAZA_API_KEY;
-      if (!apiKey) {
-        return res.status(500).json({ error: "PAYAZA_API_KEY is not configured." });
+      const secretKey = process.env.PAYSTACK_SECRET_KEY;
+      if (!secretKey) {
+        return res.status(500).json({ error: "PAYSTACK_SECRET_KEY is not configured." });
       }
 
       if (affiliateStats.balance < 50) {
         return res.status(400).json({ error: "Minimum withdrawal is $50.00" });
       }
 
-      // Actual call to Payaza Payout API
-      const response = await fetch("https://api.payaza.africa/live/merchant/api/v1/payout/transfer", {
+      const rate = await getUsdToGhsRate();
+      const ghsAmount = affiliateStats.balance * rate;
+      const amountInPesewas = Math.round(ghsAmount * 100);
+
+      // Actual call to Paystack Transfer API
+      // Note: Paystack requires a recipient code for transfers. 
+      // In production, you would first create a transfer recipient using the user's bank details.
+      const response = await fetch("https://api.paystack.co/transfer", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Payaza ${apiKey}`
+          "Authorization": `Bearer ${secretKey}`
         },
         body: JSON.stringify({
-          amount: affiliateStats.balance,
-          currency: "USD"
+          source: "balance",
+          amount: amountInPesewas,
+          currency: "GHS",
+          recipient: "RCP_t0ya41mp35flk40", // Placeholder: Replace with actual recipient code from DB
+          reason: "Vitala Affiliate Payout"
         })
       });
 
       const data = await response.json();
-      if (!response.ok) {
-        throw new Error(data.message || "Payaza payout failed");
+      if (!data.status) {
+        throw new Error(data.message || "Paystack payout failed");
       }
 
       affiliateStats.balance = 0;
-      res.json({ success: true, message: "Withdrawal processed successfully via Payaza" });
+      res.json({ success: true, message: "Withdrawal processed successfully via Paystack" });
     } catch (error: any) {
       console.error("Payout error:", error);
       res.status(500).json({ error: error.message });

@@ -112,7 +112,7 @@ export default function Affiliate() {
             disabled={withdrawing || loading || stats.balance < 50}
             className="w-full py-4 px-4 bg-gray-900 text-white rounded-xl font-medium hover:bg-gray-800 transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {withdrawing ? 'Processing...' : 'Withdraw via Payaza'}
+            {withdrawing ? 'Processing...' : 'Withdraw via Paystack'}
             {!withdrawing && <ArrowRight className="w-4 h-4" />}
           </button>
           <p className="text-center text-xs text-gray-400 mt-3">Minimum withdrawal: $50.00</p>
