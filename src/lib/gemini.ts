@@ -40,3 +40,23 @@ IMPORTANT DISCLAIMER: Always start your response by stating that you are an AI, 
 
   return response.text;
 }
+
+export async function generateAudio(text: string) {
+  // Clean up markdown characters for better speech synthesis
+  const cleanText = text.replace(/[*#_]/g, '').slice(0, 2000); 
+  
+  const response = await ai.models.generateContent({
+    model: "gemini-2.5-flash-preview-tts",
+    contents: [{ parts: [{ text: cleanText }] }],
+    config: {
+      responseModalities: ["AUDIO"],
+      speechConfig: {
+        voiceConfig: {
+          prebuiltVoiceConfig: { voiceName: 'Kore' }, // Calm, professional voice
+        },
+      },
+    },
+  });
+
+  return response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
+}

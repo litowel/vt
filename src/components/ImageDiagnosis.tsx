@@ -1,8 +1,8 @@
 import React, { useState, useRef } from 'react';
-import { analyzeImage } from '../lib/gemini';
+import { analyzeImage, generateAudio } from '../lib/gemini';
 import { saveRecord } from '../lib/storage';
 import Markdown from 'react-markdown';
-import { Loader2, Upload, Image as ImageIcon, AlertCircle, X } from 'lucide-react';
+import { Loader2, Upload, Image as ImageIcon, AlertCircle, X, Volume2 } from 'lucide-react';
 
 export default function ImageDiagnosis({ isOffline }: { isOffline: boolean }) {
   const [image, setImage] = useState<string | null>(null);
@@ -12,6 +12,9 @@ export default function ImageDiagnosis({ isOffline }: { isOffline: boolean }) {
   const [result, setResult] = useState('');
   const [error, setError] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const [audioUrl, setAudioUrl] = useState<string | null>(null);
+  const [loadingAudio, setLoadingAudio] = useState(false);
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -43,6 +46,7 @@ export default function ImageDiagnosis({ isOffline }: { isOffline: boolean }) {
     setLoading(true);
     setError('');
     setResult('');
+    setAudioUrl(null);
 
     try {
       const response = await analyzeImage(image, mimeType, context);
@@ -57,6 +61,23 @@ export default function ImageDiagnosis({ isOffline }: { isOffline: boolean }) {
       setError(err.message || 'An error occurred while analyzing the image.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handlePlayAudio = async () => {
+    if (!result || audioUrl) return;
+    
+    setLoadingAudio(true);
+    try {
+      const base64Audio = await generateAudio(result);
+      if (base64Audio) {
+        const url = `data:audio/wav;base64,${base64Audio}`;
+        setAudioUrl(url);
+      }
+    } catch (err: any) {
+      setError('Failed to generate audio: ' + err.message);
+    } finally {
+      setLoadingAudio(false);
     }
   };
 
@@ -90,7 +111,7 @@ export default function ImageDiagnosis({ isOffline }: { isOffline: boolean }) {
               <img src={image} alt="Uploaded symptom" className="w-full max-h-[400px] object-contain" />
               <button
                 type="button"
-                onClick={() => { setImage(null); setResult(''); }}
+                onClick={() => { setImage(null); setResult(''); setAudioUrl(null); }}
                 className="absolute top-4 right-4 p-2 bg-white/90 backdrop-blur-sm rounded-full text-gray-700 hover:bg-white hover:text-red-600 transition-colors shadow-sm"
               >
                 <X className="w-5 h-5" />
@@ -133,7 +154,26 @@ export default function ImageDiagnosis({ isOffline }: { isOffline: boolean }) {
 
       {result && (
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Analysis Result</h3>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-gray-900">Analysis Result</h3>
+            
+            {!audioUrl ? (
+              <button 
+                onClick={handlePlayAudio}
+                disabled={loadingAudio}
+                className="flex items-center gap-2 px-3 py-1.5 bg-teal-50 text-teal-700 rounded-lg text-sm font-medium hover:bg-teal-100 transition-colors"
+              >
+                {loadingAudio ? <Loader2 className="w-4 h-4 animate-spin" /> : <Volume2 className="w-4 h-4" />}
+                {loadingAudio ? 'Generating Audio...' : 'Listen to Result'}
+              </button>
+            ) : (
+              <audio controls autoPlay className="h-8 max-w-[200px]">
+                <source src={audioUrl} type="audio/wav" />
+                Your browser does not support the audio element.
+              </audio>
+            )}
+          </div>
+          
           <div className="prose prose-teal max-w-none">
             <Markdown>{result}</Markdown>
           </div>
