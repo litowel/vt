@@ -9,9 +9,10 @@ import ImageDiagnosis from './components/ImageDiagnosis';
 import History from './components/History';
 import Premium from './components/Premium';
 import Affiliate from './components/Affiliate';
-import { Activity, ImageIcon, Clock, WifiOff, HeartPulse, Star, Users } from 'lucide-react';
+import FirstAid from './components/FirstAid';
+import { Activity, ImageIcon, Clock, WifiOff, HeartPulse, Star, Users, AlertTriangle } from 'lucide-react';
 
-type Tab = 'symptoms' | 'image' | 'history' | 'premium' | 'affiliate';
+type Tab = 'symptoms' | 'image' | 'history' | 'firstaid' | 'premium' | 'affiliate';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<Tab>('symptoms');
@@ -65,58 +66,72 @@ export default function App() {
 
       {/* Main Content */}
       <main className="flex-1 max-w-5xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8">
-        {/* Navigation Tabs */}
-        <div className="flex flex-wrap gap-1 bg-gray-200/50 p-1 rounded-xl mb-8 max-w-2xl mx-auto">
-          <button
-            onClick={() => setActiveTab('symptoms')}
-            className={`flex-1 min-w-[100px] flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg text-sm font-medium transition-all ${
-              activeTab === 'symptoms'
-                ? 'bg-white text-gray-900 shadow-sm'
-                : 'text-gray-600 hover:text-gray-900 hover:bg-gray-200/50'
-            }`}
-          >
-            <Activity className="w-4 h-4" />
-            <span className="hidden sm:inline">Symptoms</span>
-          </button>
-          <button
-            onClick={() => setActiveTab('image')}
-            className={`flex-1 min-w-[100px] flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg text-sm font-medium transition-all ${
-              activeTab === 'image'
-                ? 'bg-white text-gray-900 shadow-sm'
-                : 'text-gray-600 hover:text-gray-900 hover:bg-gray-200/50'
-            }`}
-          >
-            <ImageIcon className="w-4 h-4" />
-            <span className="hidden sm:inline">Image</span>
-          </button>
-          <button
-            onClick={() => setActiveTab('history')}
-            className={`flex-1 min-w-[100px] flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg text-sm font-medium transition-all ${
-              activeTab === 'history'
-                ? 'bg-white text-gray-900 shadow-sm'
-                : 'text-gray-600 hover:text-gray-900 hover:bg-gray-200/50'
-            }`}
-          >
-            <Clock className="w-4 h-4" />
-            <span className="hidden sm:inline">History</span>
-          </button>
-          <button
-            onClick={() => setActiveTab('affiliate')}
-            className={`flex-1 min-w-[100px] flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg text-sm font-medium transition-all ${
-              activeTab === 'affiliate'
-                ? 'bg-white text-teal-700 shadow-sm'
-                : 'text-teal-700/70 hover:text-teal-800 hover:bg-teal-50'
-            }`}
-          >
-            <Users className="w-4 h-4" />
-            <span className="hidden sm:inline">Affiliates</span>
-          </button>
+        {/* Navigation Tabs - Scrollable on mobile */}
+        <div className="flex overflow-x-auto pb-2 mb-6 -mx-4 px-4 sm:mx-0 sm:px-0 scrollbar-hide">
+          <div className="flex gap-1 bg-gray-200/50 p-1 rounded-xl min-w-max mx-auto">
+            <button
+              onClick={() => setActiveTab('symptoms')}
+              className={`flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg text-sm font-medium transition-all ${
+                activeTab === 'symptoms'
+                  ? 'bg-white text-gray-900 shadow-sm'
+                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-200/50'
+              }`}
+            >
+              <Activity className="w-4 h-4" />
+              <span>Symptoms</span>
+            </button>
+            <button
+              onClick={() => setActiveTab('image')}
+              className={`flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg text-sm font-medium transition-all ${
+                activeTab === 'image'
+                  ? 'bg-white text-gray-900 shadow-sm'
+                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-200/50'
+              }`}
+            >
+              <ImageIcon className="w-4 h-4" />
+              <span>Image Scan</span>
+            </button>
+            <button
+              onClick={() => setActiveTab('firstaid')}
+              className={`flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg text-sm font-medium transition-all ${
+                activeTab === 'firstaid'
+                  ? 'bg-white text-red-600 shadow-sm'
+                  : 'text-gray-600 hover:text-red-600 hover:bg-red-50'
+              }`}
+            >
+              <AlertTriangle className="w-4 h-4" />
+              <span>First Aid</span>
+            </button>
+            <button
+              onClick={() => setActiveTab('history')}
+              className={`flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg text-sm font-medium transition-all ${
+                activeTab === 'history'
+                  ? 'bg-white text-gray-900 shadow-sm'
+                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-200/50'
+              }`}
+            >
+              <Clock className="w-4 h-4" />
+              <span>History</span>
+            </button>
+            <button
+              onClick={() => setActiveTab('affiliate')}
+              className={`flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg text-sm font-medium transition-all ${
+                activeTab === 'affiliate'
+                  ? 'bg-white text-teal-700 shadow-sm'
+                  : 'text-teal-700/70 hover:text-teal-800 hover:bg-teal-50'
+              }`}
+            >
+              <Users className="w-4 h-4" />
+              <span>Affiliates</span>
+            </button>
+          </div>
         </div>
 
         {/* Tab Content */}
         <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
           {activeTab === 'symptoms' && <SymptomChecker isOffline={isOffline} />}
           {activeTab === 'image' && <ImageDiagnosis isOffline={isOffline} />}
+          {activeTab === 'firstaid' && <FirstAid />}
           {activeTab === 'history' && <History />}
           {activeTab === 'premium' && <Premium />}
           {activeTab === 'affiliate' && <Affiliate />}
@@ -124,7 +139,7 @@ export default function App() {
       </main>
 
       {/* Footer */}
-      <footer className="bg-white border-t border-gray-200 py-8 mt-auto">
+      <footer className="bg-white border-t border-gray-200 py-8 mt-auto no-print">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <p className="text-sm text-gray-500">
             <strong>Disclaimer:</strong> Vitala AI is an experimental AI tool and does not provide medical advice, diagnosis, or treatment. Always seek the advice of your physician or other qualified health provider with any questions you may have regarding a medical condition.

@@ -2,7 +2,7 @@ import React, { useState, useRef } from 'react';
 import { analyzeImage, generateAudio } from '../lib/gemini';
 import { saveRecord } from '../lib/storage';
 import Markdown from 'react-markdown';
-import { Loader2, Upload, Image as ImageIcon, AlertCircle, X, Volume2 } from 'lucide-react';
+import { Loader2, Upload, Image as ImageIcon, AlertCircle, X, Volume2, MapPin, Printer } from 'lucide-react';
 
 export default function ImageDiagnosis({ isOffline }: { isOffline: boolean }) {
   const [image, setImage] = useState<string | null>(null);
@@ -81,9 +81,22 @@ export default function ImageDiagnosis({ isOffline }: { isOffline: boolean }) {
     }
   };
 
+  const handleFindClinics = () => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition((position) => {
+        const { latitude, longitude } = position.coords;
+        window.open(`https://www.google.com/maps/search/hospitals+clinics/@${latitude},${longitude},13z`, '_blank');
+      }, () => {
+        window.open(`https://www.google.com/maps/search/hospitals+clinics+near+me`, '_blank');
+      });
+    } else {
+      window.open(`https://www.google.com/maps/search/hospitals+clinics+near+me`, '_blank');
+    }
+  };
+
   return (
     <div className="max-w-3xl mx-auto space-y-6">
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 no-print">
         <h2 className="text-2xl font-semibold text-gray-900 mb-2">Image-based Diagnosis</h2>
         <p className="text-gray-500 mb-6">Upload an image of a skin condition, injury, or other visible symptom for AI analysis.</p>
 
@@ -146,36 +159,57 @@ export default function ImageDiagnosis({ isOffline }: { isOffline: boolean }) {
       </div>
 
       {error && (
-        <div className="bg-red-50 border border-red-100 text-red-600 p-4 rounded-xl flex items-start gap-3">
+        <div className="bg-red-50 border border-red-100 text-red-600 p-4 rounded-xl flex items-start gap-3 no-print">
           <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
           <p>{error}</p>
         </div>
       )}
 
       {result && (
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-gray-900">Analysis Result</h3>
+        <div className="print-section">
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-900">Analysis Result</h3>
+            </div>
             
+            <div className="prose prose-teal max-w-none">
+              <Markdown>{result}</Markdown>
+            </div>
+          </div>
+
+          {/* Action Bar */}
+          <div className="flex flex-wrap gap-3 mt-6 no-print">
             {!audioUrl ? (
               <button 
                 onClick={handlePlayAudio}
                 disabled={loadingAudio}
-                className="flex items-center gap-2 px-3 py-1.5 bg-teal-50 text-teal-700 rounded-lg text-sm font-medium hover:bg-teal-100 transition-colors"
+                className="flex-1 min-w-[140px] flex items-center justify-center gap-2 bg-teal-50 text-teal-700 px-4 py-3 rounded-xl font-medium hover:bg-teal-100 transition-colors"
               >
-                {loadingAudio ? <Loader2 className="w-4 h-4 animate-spin" /> : <Volume2 className="w-4 h-4" />}
+                {loadingAudio ? <Loader2 className="w-5 h-5 animate-spin" /> : <Volume2 className="w-5 h-5" />}
                 {loadingAudio ? 'Generating Audio...' : 'Listen to Result'}
               </button>
             ) : (
-              <audio controls autoPlay className="h-8 max-w-[200px]">
-                <source src={audioUrl} type="audio/wav" />
-                Your browser does not support the audio element.
-              </audio>
+              <div className="flex-1 min-w-[140px] flex items-center justify-center bg-teal-50 rounded-xl px-4 py-2">
+                <audio controls autoPlay className="w-full h-10">
+                  <source src={audioUrl} type="audio/wav" />
+                  Your browser does not support the audio element.
+                </audio>
+              </div>
             )}
-          </div>
-          
-          <div className="prose prose-teal max-w-none">
-            <Markdown>{result}</Markdown>
+            
+            <button 
+              onClick={handleFindClinics} 
+              className="flex-1 min-w-[140px] flex items-center justify-center gap-2 bg-blue-50 text-blue-700 px-4 py-3 rounded-xl font-medium hover:bg-blue-100 transition-colors"
+            >
+              <MapPin className="w-5 h-5" /> Nearby Clinics
+            </button>
+            
+            <button 
+              onClick={() => window.print()} 
+              className="flex-1 min-w-[140px] flex items-center justify-center gap-2 bg-gray-100 text-gray-700 px-4 py-3 rounded-xl font-medium hover:bg-gray-200 transition-colors"
+            >
+              <Printer className="w-5 h-5" /> Save / Print
+            </button>
           </div>
         </div>
       )}

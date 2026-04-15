@@ -1,33 +1,82 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Check, Star, Shield, Zap, CreditCard, Image as ImageIcon } from 'lucide-react';
+
+declare global {
+  interface Window {
+    PaystackPop: any;
+  }
+}
 
 export default function Premium() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  useEffect(() => {
+    // Load Paystack script for inline popup
+    const script = document.createElement('script');
+    script.src = 'https://js.paystack.co/v1/inline.js';
+    script.async = true;
+    document.body.appendChild(script);
+    return () => {
+      document.body.removeChild(script);
+    };
+  }, []);
+
+  const getUsdToGhsRate = async () => {
+    try {
+      const res = await fetch("https://open.er-api.com/v6/latest/USD");
+      const data = await res.json();
+      return data.rates.GHS || 15.0;
+    } catch (e) {
+      console.error("FX fetch failed, using fallback rate", e);
+      return 15.0;
+    }
+  };
+
   const handlePaystackCheckout = async () => {
     setLoading(true);
     setError('');
+    
     try {
-      const response = await fetch('/api/payment/checkout', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' }
+      // Fetch the public key from our backend to avoid Vite env injection issues
+      const keyResponse = await fetch('/api/payment/public-key');
+      const keyData = await keyResponse.json();
+      
+      if (!keyResponse.ok) {
+        throw new Error(keyData.error || "Failed to fetch Paystack configuration.");
+      }
+      
+      const publicKey = keyData.publicKey;
+
+      if (!window.PaystackPop) {
+        throw new Error("Paystack failed to load. Please check your internet connection.");
+      }
+
+      // Convert $4.99 to GHS using live FX rate
+      const usdAmount = 4.99;
+      const rate = await getUsdToGhsRate();
+      const ghsAmount = usdAmount * rate;
+      const amountInPesewas = Math.round(ghsAmount * 100);
+
+      const handler = window.PaystackPop.setup({
+        key: publicKey,
+        email: 'user@example.com', // In a real app, get from logged-in user
+        amount: amountInPesewas,
+        currency: 'GHS',
+        ref: 'VTL_' + Math.floor((Math.random() * 1000000000) + 1),
+        callback: function(response: any) {
+          // Payment complete!
+          alert('Payment complete! Reference: ' + response.reference);
+          setLoading(false);
+        },
+        onClose: function() {
+          setLoading(false);
+        }
       });
       
-      const data = await response.json();
-      
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to initialize checkout');
-      }
-      
-      if (data.checkoutUrl) {
-        window.location.href = data.checkoutUrl;
-      } else {
-        throw new Error('No checkout URL returned from Paystack');
-      }
+      handler.openIframe();
     } catch (err: any) {
       setError(err.message);
-    } finally {
       setLoading(false);
     }
   };
