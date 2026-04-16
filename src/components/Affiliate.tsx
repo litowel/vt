@@ -4,14 +4,24 @@ import { Users, DollarSign, Link as LinkIcon, Copy, CheckCircle2, ArrowRight } f
 export default function Affiliate() {
   const [copied, setCopied] = useState(false);
   const [withdrawing, setWithdrawing] = useState(false);
+  const [showWithdrawForm, setShowWithdrawForm] = useState(false);
+  const [payoutDetails, setPayoutDetails] = useState({ account_number: '', bank_code: 'MTN' });
   const [stats, setStats] = useState({ referrals: 0, balance: 0.00, transactions: [] });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   
-  const affiliateLink = "https://vitala.ai/ref/health-analyzer-1029";
+  const [affiliateLink, setAffiliateLink] = useState('');
 
   useEffect(() => {
     fetchStats();
+    
+    // Generate or retrieve a unique affiliate ID for this user
+    let storedId = localStorage.getItem('vitala_affiliate_id');
+    if (!storedId) {
+      storedId = 'ref-' + Math.random().toString(36).substring(2, 10);
+      localStorage.setItem('vitala_affiliate_id', storedId);
+    }
+    setAffiliateLink(`https://vitala.upfrica.africa/${storedId}`);
   }, []);
 
   const fetchStats = async () => {
@@ -32,13 +42,20 @@ export default function Affiliate() {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const handleWithdraw = async () => {
+  const handleWithdraw = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!payoutDetails.account_number) {
+      setError("Please enter your mobile money number.");
+      return;
+    }
+
     setWithdrawing(true);
     setError('');
     try {
       const response = await fetch('/api/affiliate/withdraw', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' }
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payoutDetails)
       });
       const data = await response.json();
       
@@ -47,6 +64,7 @@ export default function Affiliate() {
       }
       
       alert(data.message || "Withdrawal successful!");
+      setShowWithdrawForm(false);
       fetchStats(); // Refresh balance
     } catch (err: any) {
       setError(err.message);
@@ -107,15 +125,60 @@ export default function Affiliate() {
         </div>
 
         <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex flex-col justify-center">
-          <button 
-            onClick={handleWithdraw}
-            disabled={withdrawing || loading || stats.balance < 50}
-            className="w-full py-4 px-4 bg-gray-900 text-white rounded-xl font-medium hover:bg-gray-800 transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {withdrawing ? 'Processing...' : 'Withdraw via Paystack'}
-            {!withdrawing && <ArrowRight className="w-4 h-4" />}
-          </button>
-          <p className="text-center text-xs text-gray-400 mt-3">Minimum withdrawal: $50.00</p>
+          {!showWithdrawForm ? (
+            <>
+              <button 
+                onClick={() => setShowWithdrawForm(true)}
+                disabled={loading || stats.balance < 50}
+                className="w-full py-4 px-4 bg-gray-900 text-white rounded-xl font-medium hover:bg-gray-800 transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Withdraw via Paystack
+                <ArrowRight className="w-4 h-4" />
+              </button>
+              <p className="text-center text-xs text-gray-400 mt-3">Minimum withdrawal: $50.00</p>
+            </>
+          ) : (
+            <form onSubmit={handleWithdraw} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Network</label>
+                <select 
+                  value={payoutDetails.bank_code}
+                  onChange={(e) => setPayoutDetails({...payoutDetails, bank_code: e.target.value})}
+                  className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                >
+                  <option value="MTN">MTN Mobile Money</option>
+                  <option value="VOD">Vodafone Cash</option>
+                  <option value="ATL">AirtelTigo Money</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Mobile Number</label>
+                <input 
+                  type="text"
+                  placeholder="e.g. 0541234567"
+                  value={payoutDetails.account_number}
+                  onChange={(e) => setPayoutDetails({...payoutDetails, account_number: e.target.value})}
+                  className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                />
+              </div>
+              <div className="flex gap-2">
+                <button 
+                  type="button"
+                  onClick={() => setShowWithdrawForm(false)}
+                  className="flex-1 py-2 px-4 bg-gray-100 text-gray-700 rounded-lg font-medium hover:bg-gray-200 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="submit"
+                  disabled={withdrawing}
+                  className="flex-1 py-2 px-4 bg-teal-600 text-white rounded-lg font-medium hover:bg-teal-700 transition-colors disabled:opacity-50"
+                >
+                  {withdrawing ? 'Processing...' : 'Confirm'}
+                </button>
+              </div>
+            </form>
+          )}
         </div>
       </div>
 

@@ -136,11 +136,40 @@ app.post("/api/affiliate/withdraw", async (req, res) => {
       return res.status(400).json({ error: "Minimum withdrawal is $50.00" });
     }
 
+    const { account_number, bank_code } = req.body;
+    if (!account_number || !bank_code) {
+      return res.status(400).json({ error: "Account number and bank code are required." });
+    }
+
+    // 1. Create Transfer Recipient
+    const recipientResponse = await fetch("https://api.paystack.co/transferrecipient", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${secretKey}`
+      },
+      body: JSON.stringify({
+        type: "mobile_money",
+        name: "Vitala Affiliate",
+        account_number: account_number,
+        bank_code: bank_code,
+        currency: "GHS"
+      })
+    });
+
+    const recipientData = await recipientResponse.json();
+    if (!recipientData.status) {
+      throw new Error(`Failed to create recipient: ${recipientData.message}`);
+    }
+
+    const recipientCode = recipientData.data.recipient_code;
+
+    // 2. Initiate Transfer
     const rate = await getUsdToGhsRate();
     const ghsAmount = affiliateStats.balance * rate;
     const amountInPesewas = Math.round(ghsAmount * 100);
 
-    const response = await fetch("https://api.paystack.co/transfer", {
+    const transferResponse = await fetch("https://api.paystack.co/transfer", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -150,14 +179,14 @@ app.post("/api/affiliate/withdraw", async (req, res) => {
         source: "balance",
         amount: amountInPesewas,
         currency: "GHS",
-        recipient: "RCP_t0ya41mp35flk40", // Placeholder
+        recipient: recipientCode,
         reason: "Vitala Affiliate Payout"
       })
     });
 
-    const data = await response.json();
-    if (!data.status) {
-      throw new Error(`Paystack API Error: ${data.message}`);
+    const transferData = await transferResponse.json();
+    if (!transferData.status) {
+      throw new Error(`Transfer failed: ${transferData.message}`);
     }
 
     affiliateStats.balance = 0;
