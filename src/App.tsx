@@ -4,18 +4,19 @@
  */
 
 import React, { useState, useEffect } from 'react';
+import HomeSlider from './components/HomeSlider';
 import SymptomChecker from './components/SymptomChecker';
 import ImageDiagnosis from './components/ImageDiagnosis';
 import History from './components/History';
 import Premium from './components/Premium';
 import Affiliate from './components/Affiliate';
 import FirstAid from './components/FirstAid';
-import { Activity, ImageIcon, Clock, WifiOff, HeartPulse, Star, Users, AlertTriangle } from 'lucide-react';
+import { Home, Activity, ImageIcon, Clock, WifiOff, HeartPulse, Star, Users, AlertTriangle } from 'lucide-react';
 
-type Tab = 'symptoms' | 'image' | 'history' | 'firstaid' | 'premium' | 'affiliate';
+type Tab = 'home' | 'symptoms' | 'image' | 'history' | 'firstaid' | 'premium' | 'affiliate';
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<Tab>('symptoms');
+  const [activeTab, setActiveTab] = useState<Tab>('home');
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
 
   useEffect(() => {
@@ -36,7 +37,10 @@ export default function App() {
       {/* Header */}
       <header className="bg-white border-b border-gray-200 sticky top-0 z-10">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-3">
+          <div 
+            className="flex items-center gap-3 cursor-pointer"
+            onClick={() => setActiveTab('home')}
+          >
             <div className="w-10 h-10 bg-teal-600 rounded-xl flex items-center justify-center text-white shadow-sm">
               <HeartPulse className="w-6 h-6" />
             </div>
@@ -69,6 +73,17 @@ export default function App() {
         {/* Navigation Tabs - Scrollable on mobile */}
         <div className="flex overflow-x-auto pb-2 mb-6 -mx-4 px-4 sm:mx-0 sm:px-0 scrollbar-hide">
           <div className="flex gap-1 bg-gray-200/50 p-1 rounded-xl min-w-max mx-auto">
+            <button
+              onClick={() => setActiveTab('home')}
+              className={`flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg text-sm font-medium transition-all ${
+                activeTab === 'home'
+                  ? 'bg-white text-gray-900 shadow-sm'
+                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-200/50'
+              }`}
+            >
+              <Home className="w-4 h-4" />
+              <span>Home</span>
+            </button>
             <button
               onClick={() => setActiveTab('symptoms')}
               className={`flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg text-sm font-medium transition-all ${
@@ -129,6 +144,7 @@ export default function App() {
 
         {/* Tab Content */}
         <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+          {activeTab === 'home' && <HomeSlider onNavigate={setActiveTab} />}
           {activeTab === 'symptoms' && <SymptomChecker isOffline={isOffline} />}
           {activeTab === 'image' && <ImageDiagnosis isOffline={isOffline} />}
           {activeTab === 'firstaid' && <FirstAid />}
